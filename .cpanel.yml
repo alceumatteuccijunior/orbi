@@ -1,0 +1,5 @@
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/castelob/domains/vempraorbi.com.br/public_html/
+    - /bin/cp -R * $DEPLOYPATH
+    
