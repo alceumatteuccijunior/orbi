@@ -37,6 +37,37 @@ $stmt = $pdo->prepare("
 $stmt->execute([$user_id]);
 $cursos_matriculados = $stmt->fetchAll();
 
+// ================= FASE 3: GAMIFICAÇÃO & FEED =================
+
+// Calcula o Level do Usuário baseado no XP
+$xp = $user['xp'];
+$nivel_calculado = 'Iniciante';
+if($xp >= 100) $nivel_calculado = 'Script Kiddie';
+if($xp >= 500) $nivel_calculado = 'Junior Dev';
+if($xp >= 1500) $nivel_calculado = 'Pleno';
+if($xp >= 3000) $nivel_calculado = 'SysAdmin';
+if($xp >= 5000) $nivel_calculado = 'Hacker';
+
+// Se o nível mudou, atualiza no banco
+if($user['nivel_atual'] !== $nivel_calculado) {
+    $pdo->exec("UPDATE usuarios SET nivel_atual = '$nivel_calculado' WHERE id = $user_id");
+    $user['nivel_atual'] = $nivel_calculado;
+}
+
+// Busca o Top 5 Leaderboard
+$stmtLeader = $pdo->query("SELECT nome, foto_perfil, xp, nivel_atual FROM usuarios ORDER BY xp DESC LIMIT 5");
+$leaderboard = $stmtLeader->fetchAll();
+
+// Busca o Feed Global de Atividades Recentes
+$stmtFeed = $pdo->query("
+    SELECT u.nome, a.titulo, ea.data_envio, a.xp_recompensa
+    FROM entregas_alunos ea
+    JOIN usuarios u ON ea.usuario_id = u.id
+    JOIN atividades a ON ea.atividade_id = a.id
+    ORDER BY ea.data_envio DESC LIMIT 10
+");
+$feed = $stmtFeed->fetchAll();
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR" class="dark">
@@ -320,7 +351,7 @@ $cursos_matriculados = $stmt->fetchAll();
                                     <div class="flex flex-col p-3 hover:bg-surface/50 rounded-lg transition-colors group/item">
                                         <div class="flex items-center gap-3">
                                             <i data-lucide="<?= $aula['tipo'] == 'video' ? 'play-circle' : 'code' ?>" class="w-4 h-4 text-accent/50 group-hover/item:text-accent"></i>
-                                            <span class="text-xs text-zinc-400 group-hover/item:text-zinc-200 font-medium"><?= htmlspecialchars($aula['nome']) ?></span>
+                                            <span class="text-xs text-zinc-400 group-hover/item:text-zinc-200 font-medium"><?= htmlspecialchars($aula['titulo']) ?></span>
                                             <span class="ml-auto text-[10px] text-muted font-mono bg-bg border border-border px-1.5 rounded">+<?= $aula['xp_recompensa'] ?> XP</span>
                                         </div>
                                         <p class="text-[10px] text-muted ml-7 mt-1"><?= htmlspecialchars($aula['descricao']) ?></p>
@@ -331,7 +362,7 @@ $cursos_matriculados = $stmt->fetchAll();
                                                 <div class="flex items-center justify-between mb-2">
                                                     <span class="text-[10px] uppercase font-mono text-zinc-400">Desafio Prático</span>
                                                     <span class="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20">
-                                                        <i data-lucide="terminal" class="w-3 h-3 inline mr-1"></i><?= htmlspecialchars($atv['tipo']) ?>
+                                                        <i data-lucide="terminal" class="w-3 h-3 inline mr-1"></i>Snippet
                                                     </span>
                                                 </div>
                                                 <p class="text-xs text-zinc-300 mb-4"><?= htmlspecialchars($atv['titulo']) ?> - <?= htmlspecialchars($atv['descricao']) ?></p>
@@ -353,9 +384,108 @@ $cursos_matriculados = $stmt->fetchAll();
             </div>
             <?php endforeach; ?>
 
-            <!-- Dashboard Placeholder -->
-            <div x-show="currentTab === 'dashboard'" style="display: none;">
-                 <div class="text-center py-20 text-muted"><p>O Dashboard Geral e Fórum (Fase 3) será construído aqui.</p></div>
+            <!-- ================= VIEW: DASHBOARD & GAMIFICAÇÃO ================= -->
+            <div x-show="currentTab === 'dashboard'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-6">
+                
+                <div class="flex justify-between items-end mb-6 border-b border-border pb-4">
+                    <div>
+                        <h2 class="text-xl font-medium text-zinc-100">Visão Geral da Rede</h2>
+                        <p class="text-xs text-muted mt-1">Acompanhe as atividades dos alunos e o seu progresso na gamificação.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    
+                    <!-- Lado Esquerdo: Feed de Atividades -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-surface/10 border border-border rounded-xl p-6">
+                            <h3 class="text-sm font-medium text-zinc-100 mb-6 flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-accent"></i> Feed da Comunidade</h3>
+                            
+                            <?php if(empty($feed)): ?>
+                                <p class="text-xs text-zinc-500 text-center py-8">Nenhuma atividade recente encontrada na plataforma.</p>
+                            <?php else: ?>
+                                <div class="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+                                    <?php foreach($feed as $item): 
+                                        $data_formatada = date('d/m/Y H:i', strtotime($item['data_envio']));
+                                    ?>
+                                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                        <!-- Ícone central -->
+                                        <div class="flex items-center justify-center w-10 h-10 rounded-full border border-bg bg-surface shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm shadow-accent/20 z-10">
+                                            <i data-lucide="check" class="w-4 h-4 text-accent"></i>
+                                        </div>
+                                        <!-- Card da Atividade -->
+                                        <div class="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-xl border border-border bg-bg/50 shadow">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <div class="font-medium text-zinc-200 text-sm"><?= htmlspecialchars($item['nome']) ?></div>
+                                                <div class="text-[10px] text-muted font-mono"><?= $data_formatada ?></div>
+                                            </div>
+                                            <div class="text-xs text-zinc-400">
+                                                Concluiu o desafio <span class="text-zinc-200">"<?= htmlspecialchars($item['titulo']) ?>"</span> e ganhou <span class="text-accent font-mono">+<?= $item['xp_recompensa'] ?> XP</span>.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Lado Direito: Leaderboard -->
+                    <div class="space-y-6">
+                        <div class="bg-surface/30 border border-accent/20 rounded-xl p-6 relative overflow-hidden shadow-[0_0_30px_rgba(45,212,191,0.05)]">
+                            <div class="absolute -right-10 -top-10 opacity-10 pointer-events-none">
+                                <i data-lucide="trophy" class="w-40 h-40"></i>
+                            </div>
+                            
+                            <h3 class="text-sm font-medium text-zinc-100 mb-6 flex items-center gap-2 relative z-10"><i data-lucide="medal" class="w-4 h-4 text-yellow-500"></i> Top Rank Global</h3>
+                            
+                            <div class="space-y-3 relative z-10">
+                                <?php foreach($leaderboard as $idx => $lUser): 
+                                    $posicao = $idx + 1;
+                                    $isMe = ($lUser['nome'] === $user['nome']);
+                                ?>
+                                <div class="flex items-center justify-between p-3 rounded-lg border <?= $isMe ? 'border-accent bg-accent/10' : 'border-border bg-bg' ?> transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-6 text-center text-xs font-mono <?= $posicao <= 3 ? 'text-yellow-500 font-bold' : 'text-zinc-500' ?>">#<?= $posicao ?></div>
+                                        <div class="w-8 h-8 rounded-full bg-surface border border-border overflow-hidden shrink-0 flex items-center justify-center">
+                                            <?php if($lUser['foto_perfil']): ?>
+                                                <img src="<?= htmlspecialchars($lUser['foto_perfil']) ?>" class="w-full h-full object-cover">
+                                            <?php else: ?>
+                                                <span class="text-[10px] text-zinc-300"><?= strtoupper(substr($lUser['nome'], 0, 1)) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-medium <?= $isMe ? 'text-accent' : 'text-zinc-200' ?> truncate max-w-[100px]" title="<?= htmlspecialchars($lUser['nome']) ?>">
+                                                <?= htmlspecialchars($lUser['nome']) ?>
+                                            </div>
+                                            <div class="text-[10px] text-zinc-500"><?= htmlspecialchars($lUser['nivel_atual']) ?></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-[10px] font-mono text-accent bg-bg px-2 py-1 rounded border border-border">
+                                        <?= $lUser['xp'] ?>_XP
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+
+                        <!-- Card Informativo do Level Atual -->
+                        <div class="bg-bg border border-border rounded-xl p-6 text-center">
+                            <h4 class="text-xs text-muted mb-2 uppercase tracking-widest font-mono">Seu Progresso</h4>
+                            <div class="text-3xl font-medium text-zinc-100 mb-1"><?= $xp ?> <span class="text-sm text-accent">XP</span></div>
+                            <div class="text-xs text-zinc-400 mb-4">Patente Atual: <span class="text-accent"><?= htmlspecialchars($user['nivel_atual']) ?></span></div>
+                            
+                            <div class="w-full bg-surface border border-border h-2 rounded-full overflow-hidden mb-2">
+                                <?php 
+                                    $progress = ($xp % 1000) / 1000 * 100;
+                                ?>
+                                <div class="bg-accent h-full relative" style="width: <?= $progress ?>%"></div>
+                            </div>
+                            <p class="text-[9px] text-zinc-500 text-left">Progresso para a próxima patente.</p>
+                        </div>
+                    </div>
+
+                </div>
             </div>
             
             <div x-show="currentTab === 'arena'" style="display: none;">

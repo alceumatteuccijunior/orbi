@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Insere entrega (usando conteúdo para Snippets de Código)
-        $stmt = $pdo->prepare("INSERT INTO entregas_alunos (atividade_id, usuario_id, conteudo) VALUES (?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO entregas_alunos (atividade_id, usuario_id, tipo_arquivo, conteudo_snippet) VALUES (?, ?, 'snippet', ?)");
         $stmt->execute([$atividade_id, $user_id, $codigo]);
 
         // Adiciona XP
