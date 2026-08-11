@@ -62,10 +62,10 @@ try {
     $stmt = $pdo->prepare("SELECT id FROM aulas WHERE modulo_id = ? LIMIT 1");
     $stmt->execute([$modulo1_id]);
     if ($stmt->rowCount() == 0) {
-        $pdo->exec("INSERT INTO aulas (modulo_id, titulo, descricao, tipo, ordem, xp_recompensa) VALUES ($modulo1_id, '1. O que é o PHP', 'Introdução ao ecossistema PHP', 'video', 1, 50)");
+        $pdo->exec("INSERT INTO aulas (modulo_id, titulo, descricao, tipo, ordem) VALUES ($modulo1_id, '1. O que é o PHP', 'Introdução ao ecossistema PHP', 'video', 1)");
         $aula1_id = $pdo->lastInsertId();
         
-        $pdo->exec("INSERT INTO aulas (modulo_id, titulo, descricao, tipo, ordem, xp_recompensa) VALUES ($modulo1_id, '2. Desafio Prático', 'Envie seu primeiro script', 'desafio', 2, 100)");
+        $pdo->exec("INSERT INTO aulas (modulo_id, titulo, descricao, tipo, ordem) VALUES ($modulo1_id, '2. Desafio Prático', 'Envie seu primeiro script', 'desafio', 2)");
         $aula2_id = $pdo->lastInsertId();
 
         // Adiciona a atividade na aula 2

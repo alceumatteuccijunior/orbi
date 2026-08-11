@@ -352,7 +352,6 @@ $feed = $stmtFeed->fetchAll();
                                         <div class="flex items-center gap-3">
                                             <i data-lucide="<?= $aula['tipo'] == 'video' ? 'play-circle' : 'code' ?>" class="w-4 h-4 text-accent/50 group-hover/item:text-accent"></i>
                                             <span class="text-xs text-zinc-400 group-hover/item:text-zinc-200 font-medium"><?= htmlspecialchars($aula['titulo']) ?></span>
-                                            <span class="ml-auto text-[10px] text-muted font-mono bg-bg border border-border px-1.5 rounded">+<?= $aula['xp_recompensa'] ?> XP</span>
                                         </div>
                                         <p class="text-[10px] text-muted ml-7 mt-1"><?= htmlspecialchars($aula['descricao']) ?></p>
                                         
