@@ -170,7 +170,7 @@ $feed = $stmtFeed->fetchAll();
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 flex flex-col h-full bg-bg relative overflow-y-auto w-full">
+    <main class="flex-1 h-screen bg-bg relative overflow-y-auto w-full">
         
         <!-- TOPBAR -->
         <header class="sticky top-0 z-40 bg-bg/80 backdrop-blur-md border-b border-border px-4 lg:px-8 py-3 flex justify-between items-center">
@@ -190,7 +190,7 @@ $feed = $stmtFeed->fetchAll();
             </div>
         </header>
 
-        <div class="p-4 lg:p-8 pb-24 max-w-7xl mx-auto w-full overflow-hidden">
+        <div class="p-4 lg:p-8 pb-24 max-w-7xl mx-auto w-full min-h-max">
             
             <!-- ================= VIEW: MEUS CURSOS ================= -->
             <div x-show="currentTab === 'cursos'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-6">
