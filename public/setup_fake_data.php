@@ -47,11 +47,29 @@ try {
     }
 
     // 5. Cria alguns Módulos de exemplo para a UC
-    $stmt = $pdo->prepare("SELECT id FROM modulos WHERE uc_id = ?");
+    $stmt = $pdo->prepare("SELECT id FROM modulos WHERE uc_id = ? ORDER BY ordem ASC LIMIT 1");
     $stmt->execute([$uc_id]);
     if ($stmt->rowCount() == 0) {
         $pdo->exec("INSERT INTO modulos (uc_id, nome, ordem, status) VALUES ($uc_id, 'Módulo 1: Fundamentos da Linguagem', 1, 'ativo')");
+        $modulo1_id = $pdo->lastInsertId();
         $pdo->exec("INSERT INTO modulos (uc_id, nome, ordem, status) VALUES ($uc_id, 'Módulo 2: Modelagem de Dados', 2, 'ativo')");
+        $modulo2_id = $pdo->lastInsertId();
+    } else {
+        $modulo1_id = $stmt->fetchColumn();
+    }
+
+    // 6. Cria uma Aula e uma Atividade
+    $stmt = $pdo->prepare("SELECT id FROM aulas WHERE modulo_id = ? LIMIT 1");
+    $stmt->execute([$modulo1_id]);
+    if ($stmt->rowCount() == 0) {
+        $pdo->exec("INSERT INTO aulas (modulo_id, nome, descricao, tipo, ordem, xp_recompensa) VALUES ($modulo1_id, '1. O que é o PHP', 'Introdução ao ecossistema PHP', 'video', 1, 50)");
+        $aula1_id = $pdo->lastInsertId();
+        
+        $pdo->exec("INSERT INTO aulas (modulo_id, nome, descricao, tipo, ordem, xp_recompensa) VALUES ($modulo1_id, '2. Desafio Prático', 'Envie seu primeiro script', 'pratica', 2, 100)");
+        $aula2_id = $pdo->lastInsertId();
+
+        // Adiciona a atividade na aula 2
+        $pdo->exec("INSERT INTO atividades (aula_id, tipo, titulo, descricao, xp_recompensa) VALUES ($aula2_id, 'code_snippet', 'Hello World em PHP', 'Escreva um script PHP que imprima Hello World.', 100)");
     }
 
 } catch (PDOException $e) {

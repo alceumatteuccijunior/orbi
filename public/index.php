@@ -268,11 +268,87 @@ $cursos_matriculados = $stmt->fetchAll();
                 </div>
 
                 <div class="max-w-4xl mx-auto w-full">
+                    <?php
+                        $stmt = $pdo->prepare("SELECT * FROM modulos WHERE uc_id = ? ORDER BY ordem ASC");
+                        $stmt->execute([$curso['id']]);
+                        $modulos = $stmt->fetchAll();
+                        
+                        if(empty($modulos)):
+                    ?>
                     <div class="border border-border border-dashed bg-bg/20 rounded-xl p-8 text-center">
                         <i data-lucide="construction" class="w-8 h-8 text-muted mx-auto mb-3"></i>
                         <h4 class="text-sm text-zinc-300">Os módulos desta disciplina serão carregados aqui.</h4>
-                        <p class="text-xs text-zinc-500 mt-1">A implementação completa da árvore de módulos (Fase 2) está em desenvolvimento.</p>
+                        <p class="text-xs text-zinc-500 mt-1">Nenhum módulo encontrado nesta UC.</p>
                     </div>
+                    <?php else: ?>
+                    
+                    <h3 class="text-sm font-medium text-zinc-300 mb-6 flex items-center gap-2 border-b border-border pb-2">
+                        <i data-lucide="map" class="w-4 h-4 text-muted"></i> Conteúdo Programático
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <?php foreach($modulos as $mod): 
+                            $stAulas = $pdo->prepare("SELECT * FROM aulas WHERE modulo_id = ? ORDER BY ordem ASC");
+                            $stAulas->execute([$mod['id']]);
+                            $aulas = $stAulas->fetchAll();
+                        ?>
+                        <div class="border border-border bg-surface/20 rounded-xl overflow-hidden group">
+                            <button @click="activeModule = activeModule === <?= $mod['id'] ?> ? null : <?= $mod['id'] ?>" class="w-full flex items-center justify-between p-5 hover:bg-surface/40 transition-colors">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-10 h-10 rounded-full bg-bg border border-border flex items-center justify-center text-muted">
+                                        <i data-lucide="folder" class="w-5 h-5"></i>
+                                    </div>
+                                    <div class="text-left">
+                                        <h4 class="text-sm font-medium text-zinc-200"><?= htmlspecialchars($mod['nome']) ?></h4>
+                                        <p class="text-xs text-muted mt-1"><?= count($aulas) ?> Aulas</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="chevron-down" class="w-5 h-5 text-muted transition-transform duration-300" :class="activeModule === <?= $mod['id'] ?> ? 'rotate-180 text-accent' : ''"></i>
+                            </button>
+                            
+                            <div x-show="activeModule === <?= $mod['id'] ?>" x-collapse style="display:none;">
+                                <div class="border-t border-border/50 bg-bg/50 p-3 space-y-1">
+                                    <?php if(empty($aulas)): ?>
+                                        <p class="text-xs text-muted p-3">Nenhuma aula cadastrada.</p>
+                                    <?php endif; ?>
+                                    
+                                    <?php foreach($aulas as $aula): 
+                                        $stAtv = $pdo->prepare("SELECT * FROM atividades WHERE aula_id = ? LIMIT 1");
+                                        $stAtv->execute([$aula['id']]);
+                                        $atv = $stAtv->fetch();
+                                    ?>
+                                    <div class="flex flex-col p-3 hover:bg-surface/50 rounded-lg transition-colors group/item">
+                                        <div class="flex items-center gap-3">
+                                            <i data-lucide="<?= $aula['tipo'] == 'video' ? 'play-circle' : 'code' ?>" class="w-4 h-4 text-accent/50 group-hover/item:text-accent"></i>
+                                            <span class="text-xs text-zinc-400 group-hover/item:text-zinc-200 font-medium"><?= htmlspecialchars($aula['nome']) ?></span>
+                                            <span class="ml-auto text-[10px] text-muted font-mono bg-bg border border-border px-1.5 rounded">+<?= $aula['xp_recompensa'] ?> XP</span>
+                                        </div>
+                                        <p class="text-[10px] text-muted ml-7 mt-1"><?= htmlspecialchars($aula['descricao']) ?></p>
+                                        
+                                        <?php if($atv): ?>
+                                            <div class="ml-7 mt-3 p-4 bg-surface border border-border border-dashed rounded-md relative overflow-hidden">
+                                                <div class="absolute top-0 left-0 bottom-0 w-1 bg-accent/50"></div>
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-[10px] uppercase font-mono text-zinc-400">Desafio Prático</span>
+                                                    <span class="text-[10px] bg-accent/10 text-accent px-1.5 py-0.5 rounded border border-accent/20">
+                                                        <i data-lucide="terminal" class="w-3 h-3 inline mr-1"></i><?= htmlspecialchars($atv['tipo']) ?>
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-zinc-300 mb-4"><?= htmlspecialchars($atv['titulo']) ?> - <?= htmlspecialchars($atv['descricao']) ?></p>
+                                                
+                                                <button @click="$dispatch('open-modal', { id: <?= $atv['id'] ?> })" class="bg-bg border border-border hover:border-accent hover:text-accent text-zinc-400 text-xs px-3 py-1.5 rounded transition">
+                                                    <i data-lucide="upload" class="w-3 h-3 inline mr-1"></i> Enviar Resolução
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
             <?php endforeach; ?>
@@ -288,6 +364,77 @@ $cursos_matriculados = $stmt->fetchAll();
 
         </div>
     </main>
+
+    <!-- Modal de Envio -->
+    <div x-data="{ 
+            open: false, 
+            atv_id: null, 
+            codigo: '', 
+            loading: false, 
+            success: false,
+            xp_ganho: 0,
+            enviarCodigo() {
+                if(this.codigo.trim().length < 5) return;
+                this.loading = true;
+                
+                let formData = new FormData();
+                formData.append('atividade_id', this.atv_id);
+                formData.append('codigo', this.codigo);
+
+                fetch('../api/atividades.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+                    this.loading = false;
+                    if(data.success) {
+                        this.success = true;
+                        this.xp_ganho = data.xp_ganho;
+                    } else {
+                        alert(data.error || 'Erro ao enviar atividade.');
+                    }
+                })
+                .catch(err => {
+                    this.loading = false;
+                    alert('Erro de conexão.');
+                });
+            }
+         }" 
+         @open-modal.window="open = true; atv_id = $event.detail.id; codigo = ''; success = false;"
+         x-show="open" 
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm"
+         style="display:none;"
+         x-transition.opacity>
+        <div @click.away="open = false" class="bg-surface border border-border rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col" x-transition>
+            <div class="p-4 border-b border-border flex justify-between items-center bg-bg">
+                <h3 class="font-medium text-zinc-100 flex items-center gap-2"><i data-lucide="terminal" class="w-4 h-4 text-accent"></i> Envio de Snippet</h3>
+                <button @click="open = false" class="text-muted hover:text-zinc-100 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div class="p-6" x-show="!success">
+                <p class="text-xs text-muted mb-4">Cole abaixo o código fonte da sua resolução para avaliação.</p>
+                <textarea x-model="codigo" class="w-full h-64 bg-bg border border-border rounded-lg p-4 font-mono text-xs text-zinc-300 focus:border-accent outline-none focus:ring-1 focus:ring-accent resize-none transition-colors" placeholder="&lt;?php&#10;// Digite seu código aqui...&#10;"></textarea>
+            </div>
+            
+            <div class="p-10 text-center" x-show="success" style="display:none;">
+                <div class="w-16 h-16 rounded-full bg-accent/10 border border-accent flex items-center justify-center mx-auto mb-5 text-accent shadow-[0_0_30px_rgba(45,212,191,0.2)]">
+                    <i data-lucide="check" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-xl font-medium text-zinc-100 mb-2">Enviado com sucesso!</h3>
+                <p class="text-sm text-zinc-400 mb-8">Excelente trabalho. Você ganhou <span class="text-accent font-mono" x-text="'+' + xp_ganho + ' XP'"></span>.</p>
+                <button @click="open = false; window.location.reload();" class="bg-surface border border-border text-zinc-300 px-6 py-2.5 rounded hover:text-white hover:border-accent transition">Continuar Trilha</button>
+            </div>
+
+            <div class="p-4 border-t border-border bg-bg flex justify-end gap-3" x-show="!success">
+                <button @click="open = false" class="px-4 py-2 text-xs font-medium text-muted hover:text-zinc-200 transition">Cancelar</button>
+                <button @click="enviarCodigo()" :disabled="loading || codigo.length < 5" class="bg-accent text-bg px-6 py-2 rounded text-xs font-medium hover:bg-accentHover transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i data-lucide="loader-2" class="w-3 h-3 animate-spin" x-show="loading" style="display:none;"></i>
+                    <span x-text="loading ? 'Enviando...' : 'Enviar Atividade'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script>
         document.addEventListener('alpine:init', () => {
